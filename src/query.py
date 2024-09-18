@@ -8,13 +8,7 @@ from utils.get_whole_period import (
     get_total_hours_in_month,
     get_total_hours_between,
 )
-
-long_short_name_dict = {
-    "2m_temperature": "t2m",
-}
-
-RAW_DATA_PATH = "/data/era5/raw"
-AGG_DATA_PATH = "/data/era5/agg/"
+from utils.const import long_short_name_dict, RAW_DATA_PATH, AGG_DATA_PATH
 
 
 def gen_file_list(

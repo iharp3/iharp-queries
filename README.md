@@ -19,12 +19,12 @@ bash init_venv.sh
 
 ---
 
-| Query              |            Input            |
-| ------------------ | :-------------------------: |
-| get raster         | variable</br>start_datetime |
-| get time series    |                             |
-| get heatmap (mean) |                             |
-| get heatmap (min)  |                             |
-| get heatmap (max)  |                             |
-| find time          |                             |
-| find area          |                             |
+| Query              |                                                                    Input                                                                     |
+| ------------------ | :------------------------------------------------------------------------------------------------------------------------------------------: |
+| get raster         | variable</br>start_datetime</br>end_datetime</br>time_resolution</br>time_aggregation_method</br>min_lat</br>max_lat</br>min_lon</br>max_lon |
+| get time series    |                                                                                                                                              |
+| get heatmap (mean) |                                                                                                                                              |
+| get heatmap (min)  |                                                                                                                                              |
+| get heatmap (max)  |                                                                                                                                              |
+| find time          |                                                                                                                                              |
+| find area          |                                                                                                                                              |

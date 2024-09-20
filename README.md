@@ -19,12 +19,12 @@ bash init_venv.sh
 
 ---
 
-| Query              | Input                                                                                                                                                                                     |
-| ------------------ | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| get raster         | variable</br>start_datetime</br>end_datetime</br>time_resolution(hour, day, month, year)</br>time_aggregation_method(mean, min, max, sum)</br>min_lat</br>max_lat</br>min_lon</br>max_lon |
-| get time series    |                                                                                                                                                                                           |
-| get heatmap (mean) |                                                                                                                                                                                           |
-| get heatmap (min)  |                                                                                                                                                                                           |
-| get heatmap (max)  |                                                                                                                                                                                           |
-| find time          |                                                                                                                                                                                           |
-| find area          |                                                                                                                                                                                           |
+| Query              | Input                                                                                                                                                                                                                                             |
+| ------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| get raster         | variable</br>start_datetime</br>end_datetime</br>time_resolution(hour, day, month, year)</br>time_aggregation_method(mean, min, max, sum)</br>min_lat</br>max_lat</br>min_lon</br>max_lon                                                         |
+| get time series    | variable</br>start_datetime</br>end_datetime</br>time_resolution(hour, day, month, year)</br>time_aggregation_method(mean, min, max, sum)</br>min_lat</br>max_lat</br>min_lon</br>max_lon</br>time_series_aggregation_method(mean, min, max, sum) |
+| get heatmap (mean) |                                                                                                                                                                                                                                                   |
+| get heatmap (min)  |                                                                                                                                                                                                                                                   |
+| get heatmap (max)  |                                                                                                                                                                                                                                                   |
+| find time          |                                                                                                                                                                                                                                                   |
+| find area          |                                                                                                                                                                                                                                                   |

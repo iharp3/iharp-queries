@@ -20,10 +20,10 @@ bash init_venv.sh
 
 ---
 
-| Query           | Input                                                                                                                                                                                                                                             |
-| --------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| get raster      | variable</br>start_datetime</br>end_datetime</br>time_resolution(hour, day, month, year)</br>time_aggregation_method(mean, min, max, sum)</br>min_lat</br>max_lat</br>min_lon</br>max_lon                                                         |
-| get time series | variable</br>start_datetime</br>end_datetime</br>time_resolution(hour, day, month, year)</br>time_aggregation_method(mean, min, max, sum)</br>min_lat</br>max_lat</br>min_lon</br>max_lon</br>time_series_aggregation_method(mean, min, max, sum) |
-| get heatmap     | variable</br>start_datetime</br>end_datetime</br>min_lat</br>max_lat</br>min_lon</br>max_lon</br>heatmap_aggregation_method(mean, min, max, sum)                                                                                                  |
-| find time       | everything in [get time series]</br>filter_predicate(>, <, ==, !=, >=, <=)</br>filter_value                                                                                                                                                       |
-| find area       | everything in [get heatmap]</br>filter_predicate(>, <, ==, !=, >=, <=)</br>filter_value                                                                                                                                                           |
+| Query           | Input                                                                                                                                                                                     |
+| --------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| get raster      | variable</br>start_datetime</br>end_datetime</br>time_resolution(hour, day, month, year)</br>time_aggregation_method(mean, min, max, sum)</br>min_lat</br>max_lat</br>min_lon</br>max_lon |
+| get time series | everything in **[get raster]**</br>time_series_aggregation_method(mean, min, max, sum)                                                                                                    |
+| get heatmap     | variable</br>start_datetime</br>end_datetime</br>min_lat</br>max_lat</br>min_lon</br>max_lon</br>heatmap_aggregation_method(mean, min, max, sum)                                          |
+| find time       | everything in **[get time series]**</br>filter_predicate(>, <, ==, !=, >=, <=)</br>filter_value                                                                                           |
+| find area       | everything in **[get heatmap]**</br>filter_predicate(>, <, ==, !=, >=, <=)</br>filter_value                                                                                               |

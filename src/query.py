@@ -170,13 +170,13 @@ def get_min_heatmap(
     max_lon: float,
 ):
     years, months, days, hours = get_whole_period_between(start_datetime, end_datetime)
-    min_list = []
+    xrds_list = []
 
     if years:
         year = xr.open_dataset(f"{AGG_DATA_PATH}/{variable}/{variable}-year-min.nc")
         year_match = [f"{y}-12-31 00:00:00" for y in years]
         year_selected = year.sel(time=year_match, latitude=slice(max_lat, min_lat), longitude=slice(min_lon, max_lon))
-        min_list.append(year_selected)
+        xrds_list.append(year_selected)
 
     if months:
         month = xr.open_dataset(f"{AGG_DATA_PATH}/{variable}/{variable}-month-min.nc")
@@ -184,13 +184,13 @@ def get_min_heatmap(
         month_selected = month.sel(
             time=month_match, latitude=slice(max_lat, min_lat), longitude=slice(min_lon, max_lon)
         )
-        min_list.append(month_selected)
+        xrds_list.append(month_selected)
 
     if days:
         day = xr.open_dataset(f"{AGG_DATA_PATH}/{variable}/{variable}-day-min.nc")
         day_match = [f"{d} 00:00:00" for d in days]
         day_selected = day.sel(time=day_match, latitude=slice(max_lat, min_lat), longitude=slice(min_lon, max_lon))
-        min_list.append(day_selected)
+        xrds_list.append(day_selected)
 
     if hours:
         year_hour_dict = {}
@@ -208,10 +208,10 @@ def get_min_heatmap(
             )
             ds_list.append(ds)
         hour_selected = xr.concat(ds_list, dim="time")
-        min_list.append(hour_selected)
+        xrds_list.append(hour_selected)
 
-    min_concat = xr.concat(min_list, dim="time")
-    res = min_concat.min(dim='time')
+    xrds_concat = xr.concat(xrds_list, dim="time")
+    res = xrds_concat.min(dim="time")
 
     return res
 
@@ -225,8 +225,50 @@ def get_max_heatmap(
     min_lon: float,
     max_lon: float,
 ):
-    # TODO:
-    pass
+    years, months, days, hours = get_whole_period_between(start_datetime, end_datetime)
+    xrds_list = []
+
+    if years:
+        year = xr.open_dataset(f"{AGG_DATA_PATH}/{variable}/{variable}-year-max.nc")
+        year_match = [f"{y}-12-31 00:00:00" for y in years]
+        year_selected = year.sel(time=year_match, latitude=slice(max_lat, min_lat), longitude=slice(min_lon, max_lon))
+        xrds_list.append(year_selected)
+
+    if months:
+        month = xr.open_dataset(f"{AGG_DATA_PATH}/{variable}/{variable}-month-max.nc")
+        month_match = [f"{m}-{get_last_date_of_month(pd.Timestamp(m))} 00:00:00" for m in months]
+        month_selected = month.sel(
+            time=month_match, latitude=slice(max_lat, min_lat), longitude=slice(min_lon, max_lon)
+        )
+        xrds_list.append(month_selected)
+
+    if days:
+        day = xr.open_dataset(f"{AGG_DATA_PATH}/{variable}/{variable}-day-max.nc")
+        day_match = [f"{d} 00:00:00" for d in days]
+        day_selected = day.sel(time=day_match, latitude=slice(max_lat, min_lat), longitude=slice(min_lon, max_lon))
+        xrds_list.append(day_selected)
+
+    if hours:
+        year_hour_dict = {}
+        for h in hours:
+            year = h.split("-")[0]
+            if year not in year_hour_dict:
+                year_hour_dict[year] = []
+            year_hour_dict[year].append(h)
+
+        ds_list = []
+        for y in year_hour_dict:
+            file_path = f"{RAW_DATA_PATH}/{variable}/{variable}-{y}.nc"
+            ds = xr.open_dataset(file_path, engine="netcdf4").sel(
+                time=year_hour_dict[y], latitude=slice(max_lat, min_lat), longitude=slice(min_lon, max_lon)
+            )
+            ds_list.append(ds)
+        hour_selected = xr.concat(ds_list, dim="time")
+        xrds_list.append(hour_selected)
+
+    xrds_concat = xr.concat(xrds_list, dim="time")
+    res = xrds_concat.max(dim="time")
+    return res
 
 
 def get_heatmap(

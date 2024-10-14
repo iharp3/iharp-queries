@@ -410,16 +410,12 @@ def find_time_equal(
                 year_data = year.sel(time=f"{y}-12-31 00:00:00", latitude=slice(max_lat, min_lat), longitude=slice(min_lon, max_lon))
                 if(year_data["t2m"].min() == filter_value).any():
                     years_passed.append(y)
-            #res.append((year_data["t2m"].min()))
         elif time_agg_method == 'mean':
             year = xr.open_dataset(f"{AGG_DATA_PATH}/{variable}/{variable}-year-mean.nc")
             for y in years:
                 year_data = year.sel(time=f"{y}-12-31 00:00:00", latitude=slice(max_lat, min_lat), longitude=slice(min_lon, max_lon))
                 if(np.mean(year_data["t2m"]) == filter_value).any():
                     years_passed.append(y)
-            #res.append((np.mean(year_data["t2m"])))
-        # if time_resolution == "year":
-        #     return years_passed
     if time_resolution == "month":
         years, months, days, hours = get_whole_period_between(start_datetime, end_datetime)
         ds_list = []
@@ -447,9 +443,6 @@ def find_time_equal(
                     month_data = ds.sel(time=m)
                     if (month_data["t2m"].max() == filter_value).any():
                         res.append(str(m.values)[:7])
-
-            
-
         
         elif time_agg_method == 'min':
             month = xr.open_dataset(f"{AGG_DATA_PATH}/{variable}/{variable}-month-min.nc")
@@ -458,7 +451,6 @@ def find_time_equal(
                 year_data = year.sel(time=f"{y}-12-31 00:00:00", latitude=slice(max_lat, min_lat), longitude=slice(min_lon, max_lon))
                 if(year_data["t2m"].min() <= filter_value and filter_value <= year_data["t2m"].max()).any():
                     years_passed.append(y)
-            #return years_passed #2023
             for y in years_passed:
                 ds = month.sel(
                     time=slice(f"{y}-01-01 00:00:00", f"{y}-12-31 00:00:00"),
@@ -472,7 +464,6 @@ def find_time_equal(
                 ds = xr.concat(ds_list, dim="time")
                 for m in ds["time"]:
                     month_data = ds.sel(time=m)
-                    #return month_data["t2m"].min()
                     if (month_data["t2m"].min() == filter_value).any():
                         res.append(str(m.values)[:7])
 
@@ -524,7 +515,6 @@ def find_time_equal(
                 ds_m = xr.concat(ds_m_list, dim="time")
                 for d in ds_m["time"]:
                     day_data = ds_m.sel(time=d)
-                    #return day_data["t2m"].max()
                     if(day_data["t2m"].max() == filter_value):
                         res.append(str(d.values)[:10])
 
@@ -536,11 +526,8 @@ def find_time_equal(
             year = xr.open_dataset(f"{AGG_DATA_PATH}/{variable}/{variable}-year-min.nc")
             for y in years:
                 year_data = year.sel(time=f"{y}-12-31 00:00:00", latitude=slice(max_lat, min_lat), longitude=slice(min_lon, max_lon))
-                #return year_data["t2m"].min()
                 if(year_data["t2m"].min() <= filter_value and filter_value <= year_data["t2m"].max()).any():
                     years_passed.append(y)
-            
-            #return years_passed
             
             for y in years_passed:
                 ds = month.sel(
@@ -573,7 +560,6 @@ def find_time_equal(
                 ds_m = xr.concat(ds_m_list, dim="time")
                 for d in ds_m["time"]:
                     day_data = ds_m.sel(time=d)
-                    # res.append(day_data["t2m"].min())
                     if(day_data["t2m"].min() == filter_value):
                         res.append(str(d.values)[:10])
 
@@ -587,7 +573,6 @@ def find_time_equal(
         ds_m_list = []
         ds_d_list = []
         if time_agg_method == "max":
-            #hour = xr.open_dataset("/data/era5/raw/2_tm_temperature-")
             day = xr.open_dataset(f"{AGG_DATA_PATH}/{variable}/{variable}-day-max.nc")
             month = xr.open_dataset(f"{AGG_DATA_PATH}/{variable}/{variable}-month-max.nc")
             year = xr.open_dataset(f"{AGG_DATA_PATH}/{variable}/{variable}-year-max.nc")
@@ -596,8 +581,6 @@ def find_time_equal(
                 year_data = year.sel(time=f"{y}-12-31 00:00:00", latitude=slice(max_lat, min_lat), longitude=slice(min_lon, max_lon))
                 if(year_data["t2m"].min() <= filter_value and filter_value <= year_data["t2m"].max()).any():
                     years_passed.append(y)
-            
-            #return years_passed
 
             for y in years_passed:
                 ds = month.sel(
@@ -616,8 +599,6 @@ def find_time_equal(
                     if (month_data["t2m"].min() <= filter_value and filter_value <= month_data["t2m"].max()).any():
                         months_passed.append(str(m.values)[:10])
             
-            #return months_passed
-            
             for m in months_passed:
                 ds_m = day.sel(
                     time=slice(f"{m[:7]}-01 00:00:00", f"{m} 23:00:00"),
@@ -632,35 +613,26 @@ def find_time_equal(
                 ds_m = xr.concat(ds_m_list, dim="time")
                 for d in ds_m["time"]:
                     day_data = ds_m.sel(time=d)
-                    #return day_data["t2m"].max()
                     if(day_data["t2m"].max() >= filter_value and filter_value >= day_data["t2m"].min()):
                         days_passed.append(str(d.values)[:10])
             
-            #return days_passed
             
             for d in days_passed:
                 whole_year, whole_month, whole_day, ds_d = get_whole_period_between(f"{d} 00:00:00", f"{d} 23:00:00")
 
                 if ds_d:
                     ds_d_list.append(ds_d)
-            #return ds_d_list
  
             for h in ds_d_list:
-                #return h[0][:4]
                 hour_dataset = xr.open_dataset(f"{RAW_DATA_PATH}/{variable}/{variable}-{h[0][:4]}.nc")
                 for hour in h:
-                    #return h
-                    #return hour[:4]
                     temp = hour_dataset["t2m"].sel(time=hour).values
-                    #return temp.max() #317.20237690953525
-                    #hour_temp_list.append((hour, temp.max()))
-                    #return hour_temp_list
+
                     if(temp.max() == filter_value):
                         res.append(hour)
 
             return res
         elif time_agg_method == "min":
-            #hour = xr.open_dataset("/data/era5/raw/2_tm_temperature-")
             day = xr.open_dataset(f"{AGG_DATA_PATH}/{variable}/{variable}-day-min.nc")
             month = xr.open_dataset(f"{AGG_DATA_PATH}/{variable}/{variable}-month-min.nc")
             year = xr.open_dataset(f"{AGG_DATA_PATH}/{variable}/{variable}-year-min.nc")
@@ -669,8 +641,6 @@ def find_time_equal(
                 year_data = year.sel(time=f"{y}-12-31 00:00:00", latitude=slice(max_lat, min_lat), longitude=slice(min_lon, max_lon))
                 if(year_data["t2m"].min() <= filter_value and filter_value <= year_data["t2m"].max()).any():
                     years_passed.append(y)
-            
-            #return years_passed
 
             for y in years_passed:
                 ds = month.sel(
@@ -689,8 +659,6 @@ def find_time_equal(
                     if (month_data["t2m"].min() <= filter_value and filter_value <= month_data["t2m"].max()).any():
                         months_passed.append(str(m.values)[:10])
             
-            #return months_passed
-            
             for m in months_passed:
                 ds_m = day.sel(
                     time=slice(f"{m[:7]}-01 00:00:00", f"{m} 23:00:00"),
@@ -705,29 +673,20 @@ def find_time_equal(
                 ds_m = xr.concat(ds_m_list, dim="time")
                 for d in ds_m["time"]:
                     day_data = ds_m.sel(time=d)
-                    #return day_data["t2m"].max()
                     if(day_data["t2m"].max() >= filter_value and filter_value >= day_data["t2m"].min()):
                         days_passed.append(str(d.values)[:10])
-            
-            #return days_passed
             
             for d in days_passed:
                 whole_year, whole_month, whole_day, ds_d = get_whole_period_between(f"{d} 00:00:00", f"{d} 23:00:00")
 
                 if ds_d:
                     ds_d_list.append(ds_d)
-            #return ds_d_list
  
             for h in ds_d_list:
-                #return h[0][:4]
                 hour_dataset = xr.open_dataset(f"{RAW_DATA_PATH}/{variable}/{variable}-{h[0][:4]}.nc")
                 for hour in h:
-                    #return h
-                    #return hour[:4]
                     temp = hour_dataset["t2m"].sel(time=hour).values
-                    #return temp.max() #317.20237690953525
-                    #hour_temp_list.append((hour, temp.max()))
-                    #return hour_temp_list
+
                     if(temp.min() == filter_value):
                         res.append(hour)
 

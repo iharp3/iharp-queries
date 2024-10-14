@@ -333,45 +333,7 @@ def find_time_pyramid(
     filter_value: float,
 ):
     # TODO:
-    ts = get_timeseries(
-        variable,
-        start_datetime,
-        end_datetime,
-        time_resolution,
-        time_agg_method,
-        min_lat,
-        max_lat,
-        min_lon,
-        max_lon,
-        time_series_aggregation_method,
-    )
-    #how do I check years here and if true how do I enter into months
-    res = []
-    if filter_predicate == ">":
-        if time_series_aggregation_method == "max":
-            for i in ts:
-                # if variable at time i is greater than max -> True, else -> False
-                if(i > filter_value):
-                    res.append(True)
-                else:
-                    res.append(False)
-        elif time_series_aggregation_method == "min":
-            for i in ts:
-                if i < filter_value:
-                    res.append(True)
-                else:
-                    res.append(False)
-    elif filter_predicate == "<":
-        res = 0
-    elif filter_predicate == ">=":
-        res = 0
-    elif filter_predicate == "<=":
-        res = 0
-    elif filter_predicate == "==":
-        res = 0
-    elif filter_predicate == "!=":
-        res = 0
-    return res
+    pass
 
 def find_time_equal(
     variable: str,

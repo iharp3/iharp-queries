@@ -5,3 +5,4 @@ h5py
 dask[complete]
 pandas
 numpy
+plotly

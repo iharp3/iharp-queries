@@ -53,7 +53,7 @@ def get_raster(
             longitude=slice(min_lon, max_lon),
         )
         ds_list.append(ds)
-    ds = xr.concat(ds_list, dim="time")
+    ds = xr.concat([i.chunk() for i in ds_list], dim="time")
     return ds
 
 
@@ -372,8 +372,95 @@ def find_time_pyramid(
     filter_predicate: str,  # e.g., ">", "<", "==", ">=", "<="
     filter_value: float,
 ):
-    # TODO:
+    """
+    Optimizations hueristics:
+        - find day >  x: if year-min > x, return True; if year-max <= x, return False
+        - find day <  x: if year-min >= x, return False; if year-max < x, return True
+        - find day == x: if year-min > x, return False; if year-max < x, return False
+        - find day >= x: if year-min >= x, return True; if year-max < x, return False
+        - find day <= x: if year-min > x, return False; if year-max <= x, return True
+    """
+    if time_resolution == "year" or time_resolution == "month" or filter_predicate == "!=":
+        return find_time_baseline(
+            variable,
+            start_datetime,
+            end_datetime,
+            time_resolution,  # e.g., "hour", "day", "month", "year"
+            time_agg_method,  # e.g., "mean", "max", "min"
+            min_lat,
+            max_lat,
+            min_lon,
+            max_lon,
+            time_series_aggregation_method,  # e.g., "mean", "max", "min"
+            filter_predicate,  # e.g., ">", "<", "==", "!=", ">=", "<="
+            filter_value,
+        )
     pass
+
+
+def find_time_pyramid_day(
+    variable: str,
+    start_datetime: str,
+    end_datetime: str,
+    time_resolution: str,  # e.g., "hour", "day", "month", "year"
+    time_agg_method: str,  # e.g., "mean", "max", "min"
+    min_lat: float,
+    max_lat: float,
+    min_lon: float,
+    max_lon: float,
+    time_series_aggregation_method: str,  # e.g., "mean", "max", "min"
+    filter_predicate: str,  # e.g., ">", "<", "==", ">=", "<="
+    filter_value: float,
+):
+    """when time resolution is day"""
+    years, months, days, hours = get_whole_period_between(start_datetime, end_datetime)
+    time_points = pd.date_range(start=start_datetime, end=end_datetime, freq="D")
+    result = xr.Dataset(data_vars=dict(T_or_F=(["time"], [None] * len(time_points))), coords=dict(time=time_points))
+    result = result.rename(name_dict={"T_or_F": variable})
+
+    if years:
+        yearly = xr.open_dataset(f"{AGG_DATA_PATH}/{variable}/{variable}-year-mean.nc")
+        for year in years:
+            year_match = [f"{year}-12-31 00:00:00"]
+            year_selected = yearly.sel(
+                time=year_match, latitude=slice(max_lat, min_lat), longitude=slice(min_lon, max_lon)
+            )
+            if filter_predicate == ">":
+                if year_selected[variable].min() > filter_value:
+                    result.loc[f"{year}-01-01":f"{year}-12-31"] = True
+                elif year_selected[variable].max() <= filter_value:
+                    result.loc[f"{year}-01-01":f"{year}-12-31"] = False
+            elif filter_predicate == "<":
+                if year_selected[variable].min() >= filter_value:
+                    result.loc[f"{year}-01-01":f"{year}-12-31"] = False
+                elif year_selected[variable].max() < filter_value:
+                    result.loc[f"{year}-01-01":f"{year}-12-31"] = True
+            elif filter_predicate == "==":
+                if year_selected[variable].min() > filter_value or year_selected[variable].max() < filter_value:
+                    result.loc[f"{year}-01-01":f"{year}-12-31"] = False
+
+    if months:
+        monthly = xr.open_dataset(f"{AGG_DATA_PATH}/{variable}/{variable}-month-mean.nc")
+        for month in months:
+            month_match = [f"{month}-{get_last_date_of_month(pd.Timestamp(month))} 00:00:00"]
+            month_selected = monthly.sel(
+                time=month_match, latitude=slice(max_lat, min_lat), longitude=slice(min_lon, max_lon)
+            )
+            if filter_predicate == ">":
+                if month_selected[variable].min() > filter_value:
+                    result.loc[f"{month}-01" :f"{month}-{get_last_date_of_month(pd.Timestamp(month))}"] = True
+                elif month_selected[variable].max() <= filter_value:
+                    result.loc[f"{month}-01" :f"{month}-{get_last_date_of_month(pd.Timestamp(month))}"] = False
+            elif filter_predicate == "<":
+                if month_selected[variable].min() >= filter_value:
+                    result.loc[f"{month}-01" :f"{month}-{get_last_date_of_month(pd.Timestamp(month))}"] = False
+                elif month_selected[variable].max() < filter_value:
+                    result.loc[f"{month}-01" :f"{month}-{get_last_date_of_month(pd.Timestamp(month))}"] = True
+            elif filter_predicate == "==":
+                if month_selected[variable].min() > filter_value or month_selected[variable].max() < filter_value:
+                    result.loc[f"{month}-01" :f"{month}-{get_last_date_of_month(pd.Timestamp(month))}"] = False
+
+    # do rest days and undetermined days together
 
 
 def find_area_baseline(

@@ -374,13 +374,13 @@ def find_time_pyramid(
 ):
     """
     Optimizations hueristics:
-        - find day >  x: if year-min > x, return True; if year-max <= x, return False
-        - find day <  x: if year-min >= x, return False; if year-max < x, return True
-        - find day == x: if year-min > x, return False; if year-max < x, return False
-        - find day >= x: if year-min >= x, return True; if year-max < x, return False
-        - find day <= x: if year-min > x, return False; if year-max <= x, return True
+        - find hour >  x: if year-min >  x, return True ; if year-max <= x, return False
+        - find hour <  x: if year-min >= x, return False; if year-max <  x, return True
+        - find hour == x: if year-min >  x, return False; if year-max <  x, return False
+        - find hour >= x: if year-min >= x, return True ; if year-max <  x, return False
+        - find hour <= x: if year-min >  x, return False; if year-max <= x, return True
     """
-    if time_resolution == "year" or time_resolution == "month" or filter_predicate == "!=":
+    if time_resolution == "year" or time_resolution == "month" or time_resolution == "day" or filter_predicate == "!=":
         return find_time_baseline(
             variable,
             start_datetime,
@@ -398,7 +398,7 @@ def find_time_pyramid(
     pass
 
 
-def find_time_pyramid_day(
+def find_time_pyramid_hour(
     variable: str,
     start_datetime: str,
     end_datetime: str,
@@ -412,55 +412,153 @@ def find_time_pyramid_day(
     filter_predicate: str,  # e.g., ">", "<", "==", ">=", "<="
     filter_value: float,
 ):
-    """when time resolution is day"""
+    short_variable = long_short_name_dict[variable]
+    """when time resolution is hour"""
     years, months, days, hours = get_whole_period_between(start_datetime, end_datetime)
-    time_points = pd.date_range(start=start_datetime, end=end_datetime, freq="D")
-    result = xr.Dataset(data_vars=dict(T_or_F=(["time"], [None] * len(time_points))), coords=dict(time=time_points))
-    result = result.rename(name_dict={"T_or_F": variable})
+    time_points = pd.date_range(start=start_datetime, end=end_datetime, freq="h")
+    result = xr.Dataset(
+        data_vars={short_variable: (["time"], [None] * len(time_points))},
+        coords=dict(time=time_points),
+    )
 
     if years:
-        yearly = xr.open_dataset(f"{AGG_DATA_PATH}/{variable}/{variable}-year-mean.nc")
+        year_min = xr.open_dataset(f"{AGG_DATA_PATH}/{variable}/{variable}-year-min.nc")
+        year_max = xr.open_dataset(f"{AGG_DATA_PATH}/{variable}/{variable}-year-max.nc")
         for year in years:
-            year_match = [f"{year}-12-31 00:00:00"]
-            year_selected = yearly.sel(
-                time=year_match, latitude=slice(max_lat, min_lat), longitude=slice(min_lon, max_lon)
-            )
+            year_determined = False
+            year_datetime = f"{year}-12-31 00:00:00"
+            curr_year_min = year_min.sel(
+                time=year_datetime, latitude=slice(max_lat, min_lat), longitude=slice(min_lon, max_lon)
+            )[short_variable].min()
+            curr_year_max = year_max.sel(
+                time=year_datetime, latitude=slice(max_lat, min_lat), longitude=slice(min_lon, max_lon)
+            )[short_variable].max()
             if filter_predicate == ">":
-                if year_selected[variable].min() > filter_value:
-                    result.loc[f"{year}-01-01":f"{year}-12-31"] = True
-                elif year_selected[variable].max() <= filter_value:
-                    result.loc[f"{year}-01-01":f"{year}-12-31"] = False
+                if curr_year_min > filter_value:
+                    print(f"{year}: min > filter, True")
+                    year_determined = True
+                    result[short_variable].loc[str(year) : str(year)] = True
+                elif curr_year_max <= filter_value:
+                    print(f"{year}: max <= filter, False")
+                    year_determined = True
+                    result[short_variable].loc[str(year) : str(year)] = False
             elif filter_predicate == "<":
-                if year_selected[variable].min() >= filter_value:
-                    result.loc[f"{year}-01-01":f"{year}-12-31"] = False
-                elif year_selected[variable].max() < filter_value:
-                    result.loc[f"{year}-01-01":f"{year}-12-31"] = True
+                if curr_year_min >= filter_value:
+                    print(f"{year}: min >= filter, False")
+                    year_determined = True
+                    result[short_variable].loc[str(year) : str(year)] = False
+                elif curr_year_max < filter_value:
+                    print(f"{year}: max < filter, True")
+                    year_determined = True
+                    result[short_variable].loc[str(year) : str(year)] = True
             elif filter_predicate == "==":
-                if year_selected[variable].min() > filter_value or year_selected[variable].max() < filter_value:
-                    result.loc[f"{year}-01-01":f"{year}-12-31"] = False
+                if curr_year_min > filter_value or curr_year_max < filter_value:
+                    print(f"{year}: min > filter or max < filter, False")
+                    year_determined = True
+                    result[short_variable].loc[str(year) : str(year)] = False
+            if not year_determined:
+                # add monthes to months
+                months = months + [f"{year}-{month:02d}" for month in range(1, 13)]
 
     if months:
-        monthly = xr.open_dataset(f"{AGG_DATA_PATH}/{variable}/{variable}-month-mean.nc")
+        print(months)
+        month_min = xr.open_dataset(f"{AGG_DATA_PATH}/{variable}/{variable}-month-min.nc")
+        month_max = xr.open_dataset(f"{AGG_DATA_PATH}/{variable}/{variable}-month-max.nc")
         for month in months:
-            month_match = [f"{month}-{get_last_date_of_month(pd.Timestamp(month))} 00:00:00"]
-            month_selected = monthly.sel(
-                time=month_match, latitude=slice(max_lat, min_lat), longitude=slice(min_lon, max_lon)
-            )
+            month_determined = False
+            month_datetime = f"{month}-{get_last_date_of_month(pd.Timestamp(month))} 00:00:00"
+            curr_month_min = month_min.sel(
+                time=month_datetime, latitude=slice(max_lat, min_lat), longitude=slice(min_lon, max_lon)
+            )[short_variable].min()
+            curr_month_max = month_max.sel(
+                time=month_datetime, latitude=slice(max_lat, min_lat), longitude=slice(min_lon, max_lon)
+            )[short_variable].max()
             if filter_predicate == ">":
-                if month_selected[variable].min() > filter_value:
-                    result.loc[f"{month}-01" :f"{month}-{get_last_date_of_month(pd.Timestamp(month))}"] = True
-                elif month_selected[variable].max() <= filter_value:
-                    result.loc[f"{month}-01" :f"{month}-{get_last_date_of_month(pd.Timestamp(month))}"] = False
+                if curr_month_min > filter_value:
+                    print(f"{month}: min > filter, True")
+                    month_determined = True
+                    result[short_variable].loc[month:month] = True
+                elif curr_month_max <= filter_value:
+                    print(f"{month}: max <= filter, False")
+                    month_determined = True
+                    result[short_variable].loc[month:month] = False
             elif filter_predicate == "<":
-                if month_selected[variable].min() >= filter_value:
-                    result.loc[f"{month}-01" :f"{month}-{get_last_date_of_month(pd.Timestamp(month))}"] = False
-                elif month_selected[variable].max() < filter_value:
-                    result.loc[f"{month}-01" :f"{month}-{get_last_date_of_month(pd.Timestamp(month))}"] = True
+                if curr_month_min >= filter_value:
+                    print(f"{month}: min >= filter, False")
+                    month_determined = True
+                    result[short_variable].loc[month:month] = False
+                elif curr_month_max < filter_value:
+                    print(f"{month}: max < filter, True")
+                    month_determined = True
+                    result[short_variable].loc[month:month] = True
             elif filter_predicate == "==":
-                if month_selected[variable].min() > filter_value or month_selected[variable].max() < filter_value:
-                    result.loc[f"{month}-01" :f"{month}-{get_last_date_of_month(pd.Timestamp(month))}"] = False
+                if curr_month_min > filter_value or curr_month_max < filter_value:
+                    print(f"{month}: min > filter or max < filter, False")
+                    month_determined = True
+                    result[short_variable].loc[month:month] = False
+            if not month_determined:
+                # add days to days
+                days = days + [
+                    f"{month}-{day:02d}" for day in range(1, get_last_date_of_month(pd.Timestamp(month)) + 1)
+                ]
 
-    # do rest days and undetermined days together
+    if days:
+        print(days)
+        day_min = xr.open_dataset(f"{AGG_DATA_PATH}/{variable}/{variable}-day-min.nc")
+        day_max = xr.open_dataset(f"{AGG_DATA_PATH}/{variable}/{variable}-day-max.nc")
+        for day in days:
+            day_datetime = f"{day} 00:00:00"
+            curr_day_min = day_min.sel(
+                time=day_datetime, latitude=slice(max_lat, min_lat), longitude=slice(min_lon, max_lon)
+            )[short_variable].min()
+            curr_day_max = day_max.sel(
+                time=day_datetime, latitude=slice(max_lat, min_lat), longitude=slice(min_lon, max_lon)
+            )[short_variable].max()
+            if filter_predicate == ">":
+                if curr_day_min > filter_value:
+                    print(f"{day}: min > filter, True")
+                    result[short_variable].loc[day:day] = True
+                elif curr_day_max <= filter_value:
+                    print(f"{day}: max <= filter, False")
+                    result[short_variable].loc[day:day] = False
+            elif filter_predicate == "<":
+                if curr_day_min >= filter_value:
+                    print(f"{day}: min >= filter, False")
+                    result[short_variable].loc[day:day] = False
+                elif curr_day_max < filter_value:
+                    print(f"{day}: max < filter, True")
+                    result[short_variable].loc[day:day] = True
+            elif filter_predicate == "==":
+                if curr_day_min > filter_value or curr_day_max < filter_value:
+                    print(f"{day}: min > filter or max < filter, False")
+                    result[short_variable].loc[day:day] = False
+
+    result_undetermined = result["time"].where(result[short_variable].isnull(), drop=True)
+    if result_undetermined.size > 0:
+        min_hour = result_undetermined.min().values
+        max_hour = result_undetermined.max().values
+        min_hour = pd.Timestamp(min_hour).strftime("%Y-%m-%d %H:%M:%S")
+        max_hour = pd.Timestamp(max_hour).strftime("%Y-%m-%d %H:%M:%S")
+        print("Check hour: ", min_hour, max_hour)
+
+        rest = find_time_baseline(
+            variable,
+            min_hour,
+            max_hour,
+            time_resolution,  # e.g., "hour", "day", "month", "year"
+            time_agg_method,  # e.g., "mean", "max", "min"
+            min_lat,
+            max_lat,
+            min_lon,
+            max_lon,
+            time_series_aggregation_method,  # e.g., "mean", "max", "min"
+            filter_predicate,  # e.g., ">", "<", "==", "!=", ">=", "<="
+            filter_value,
+        )
+
+        result[short_variable].loc[f"{min_hour}":f"{max_hour}"] = rest[short_variable]
+        result[short_variable] = result[short_variable].astype(bool)
+    return result
 
 
 def find_area_baseline(

@@ -425,8 +425,10 @@ def find_time_pyramid_hour(
     filter_predicate: str,  # e.g., ">", "<", "==", ">=", "<="
     filter_value: float,
 ):
+    """
+    Using yearly, monthly and daily pre-aggregation to batch set True/False for hourly find time query
+    """
     short_variable = long_short_name_dict[variable]
-    """when time resolution is hour"""
     years, months, days, hours = get_whole_period_between(start_datetime, end_datetime)
     time_points = pd.date_range(start=start_datetime, end=end_datetime, freq="h")
     result = xr.Dataset(

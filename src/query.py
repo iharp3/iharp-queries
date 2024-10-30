@@ -380,8 +380,8 @@ def find_time_pyramid(
         - find hour >= x: if year-min >= x, return True ; if year-max <  x, return False
         - find hour <= x: if year-min >  x, return False; if year-max <= x, return True
     """
-    if time_resolution == "year" or time_resolution == "month" or time_resolution == "day" or filter_predicate == "!=":
-        return find_time_baseline(
+    if time_resolution == "hour" and filter_predicate != "!=":
+        return find_time_pyramid_hour(
             variable,
             start_datetime,
             end_datetime,
@@ -395,7 +395,20 @@ def find_time_pyramid(
             filter_predicate,  # e.g., ">", "<", "==", "!=", ">=", "<="
             filter_value,
         )
-    pass
+    return find_time_baseline(
+        variable,
+        start_datetime,
+        end_datetime,
+        time_resolution,  # e.g., "hour", "day", "month", "year"
+        time_agg_method,  # e.g., "mean", "max", "min"
+        min_lat,
+        max_lat,
+        min_lon,
+        max_lon,
+        time_series_aggregation_method,  # e.g., "mean", "max", "min"
+        filter_predicate,  # e.g., ">", "<", "==", "!=", ">=", "<="
+        filter_value,
+    )
 
 
 def find_time_pyramid_hour(

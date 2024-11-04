@@ -1,6 +1,7 @@
 import xarray as xr
 import pandas as pd
 import numpy as np
+import cdsapi
 from utils.get_whole_period import (
     get_whole_period_between,
     get_last_date_of_month,
@@ -9,6 +10,7 @@ from utils.get_whole_period import (
     get_total_hours_between,
 )
 from utils.const import long_short_name_dict, RAW_DATA_PATH, AGG_DATA_PATH
+from utils.raster_helper import *
 
 
 def gen_file_list(
@@ -31,6 +33,97 @@ def gen_file_list(
     print(file_list)
     return file_list
 
+def mix_query_check(
+    start_datetime: str,
+    end_datetime: str,
+    time_resolution: str,  # e.g., "hour", "day", "month", "year"
+    time_agg_method: str,  # e.g., "mean", "max", "min"
+    min_lat: float,
+    max_lat: float,
+    min_lon: float,
+    max_lon: float,
+):
+    query = {
+                "min_lat": min_lat,
+                "max_lat": max_lat,
+                "min_lon": min_lon,
+                "max_lon": max_lon,
+                "start_datetime": start_datetime,
+                "end_datetime": end_datetime,
+                "time_resolution": time_resolution,
+                "time_agg_method": time_agg_method,
+            }
+    
+    df = pd.read_csv("metadata.csv") # needs to be changed
+    df_relevant = get_relevant_meta(df, query)
+
+    ds_query = gen_xarray_from_query(query)
+    false_mask = xr.DataArray(
+        np.zeros((ds_query.sizes["latitude"], ds_query.sizes["longitude"], ds_query.sizes["time"]), dtype=bool),
+        dims=["latitude", "longitude", "time"],
+    )
+    for index, api in df_relevant.iterapis():
+        ds_meta = gen_xarray_from_meta(api)
+        mask = mask_query_with_meta(ds_query, ds_meta)
+        false_mask = false_mask | mask
+
+
+    query_fully_covered = false_mask.all().values
+    if not query_fully_covered:
+        if(df_relevant.shape[0] == 0):
+            query.popitem()
+            query.popitem()
+            return [], query
+        else:
+            leftover_latitude_min = false_mask.where(false_mask==False, drop=True).latitude.min().item()
+            leftover_latitude_max = false_mask.where(false_mask==False, drop=True).latitude.max().item()
+            leftover_longitude_min = false_mask.where(false_mask==False, drop=True).longitude.min().item()
+            leftover_longitude_max = false_mask.where(false_mask==False, drop=True).longitude.max().item()
+            min_year = str(false_mask.where(false_mask==False, drop=True).time.min().values)[:4]
+            max_year = str(false_mask.where(false_mask==False, drop=True).time.max().values)[:4]
+            year_range = range(int(min_year), int(max_year))
+            leftover_dict = {
+                "min_lat": leftover_latitude_min,
+                "max_lat": leftover_latitude_max,
+                "min_lon": leftover_longitude_min,
+                "max_lon": leftover_longitude_max,
+                "year_range": year_range
+            }
+
+            return df_relevant, leftover_dict
+    else:
+        
+        return df_relevant, None
+        
+def make_api_call(api, variable):
+    file_path = ""
+    api_request_settings = {
+                        "dataset": "reanalysis-era5-single-levels",
+                        "product_type": ["reanalysis"],
+                        "data_format": "netcdf",
+                        "download_format": "unarchived",
+                        "month": [str(i).zfill(2) for i in range(1, 13)],
+                        "day": [str(i).zfill(2) for i in range(1, 32)],
+                        "time":[f"{str(i).zfill(2)}:00" for i in range(0, 24)]
+                        }
+    
+    dataset = api_request_settings['dataset']
+    request = {
+        'product_type': api_request_settings['product_type'],
+        'variable': variable,
+        'year': api['year_range'],
+        'month': api_request_settings['month'],
+        'day': api_request_settings['day'],
+        'time': api_request_settings['time'],
+        'data_format': api_request_settings['data_format'],
+        'download_format': api_request_settings['download_format'],
+        'area': [api['max_lat'], api['min_long'], api['min_lat'], api['max_long']]
+    }
+    
+    client = cdsapi.Client()
+    client.retrieve(dataset, request).download(file_path)
+    return file_path
+
 
 def get_raster(
     variable: str,
@@ -44,17 +137,21 @@ def get_raster(
     max_lon: float,
     # spatial_resolution: float,  # e.g., 0.25, 0.5, 1.0, 2.5, 5.0
 ):
-    file_list = gen_file_list(variable, start_datetime, end_datetime, time_resolution, time_agg_method)
-    ds_list = []
-    for file in file_list:
-        ds = xr.open_dataset(file, engine="netcdf4").sel(
-            time=slice(start_datetime, end_datetime),
-            latitude=slice(max_lat, min_lat),
-            longitude=slice(min_lon, max_lon),
-        )
-        ds_list.append(ds)
-    ds = xr.concat([i.chunk() for i in ds_list], dim="time")
-    return ds
+    file_list, api = mix_query_check(start_datetime, end_datetime, time_resolution, time_agg_method, min_lat, max_lat, min_lon, max_lon)
+    if api:
+        api_data_file = make_api_call(api, variable)
+    else:
+        ds_list = []
+        for file in file_list:
+            ds = xr.open_dataset(file, engine="netcdf4").sel(
+                time=slice(start_datetime, end_datetime),
+                latitude=slice(max_lat, min_lat),
+                longitude=slice(min_lon, max_lon),
+            )
+            ds_list.append(ds)
+        ds_list.append(api_data_file)
+        ds = xr.concat([i.chunk() for i in ds_list], dim="time")
+        return ds
 
 
 def get_timeseries(

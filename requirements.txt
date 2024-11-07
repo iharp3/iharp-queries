@@ -6,3 +6,4 @@ dask[complete]
 pandas
 numpy
 plotly
+cdsapi
